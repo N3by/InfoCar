@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modelo Entidad–Relación — Tránsito</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; margin:0; background:#0b1220; color:#e5e7eb; }
+    header { padding: 18px 22px; border-bottom: 1px solid #1f2937; position: sticky; top: 0; background: #0b1220; z-index: 10; }
+    h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+    .wrap { padding: 18px; display: grid; gap: 14px; }
+    .card { background: #0f172a; border: 1px solid #1f2937; border-radius: 16px; padding: 14px; }
+    .legend { font-size: 13px; color:#9ca3af; }
+    .mermaid { background:#0b1220; border-radius: 12px; padding: 8px; }
+    a{ color:#93c5fd; }
+  </style>
+  <!-- Mermaid v10 -->
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "dark" });
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Modelo Entidad–Relación (ERD) — Base de datos de tránsito</h1>
+  </header>
+
+  <div class="wrap">
+    <div class="card legend">
+      <strong>Convenciones:</strong>
+      <ul>
+        <li><code>PK</code>: clave primaria, <code>FK</code>: clave foránea.</li>
+        <li>Cardinalidades Mermaid: <code>||</code> = uno y sólo uno, <code>o|</code>/<code>|o</code> = cero o uno, <code>o{</code>/<code>}o</code> = cero a muchos, <code>|{</code>/<code>}|</code> = uno a muchos.</li>
+        <li>Este ERD refleja las tablas ya creadas: <em>propietario, vehiculo, multas, historial_propietarios, seguros_alertas</em>.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="mermaid">
+        erDiagram
+          PROPIETARIO ||--o{ VEHICULO : owns
+          VEHICULO   ||--o{ MULTAS   : has
+          PROPIETARIO ||--o{ MULTAS  : liable_for
+          VEHICULO   ||--o{ HISTORIAL_PROPIETARIOS : had
+          PROPIETARIO ||--o{ SEGUROS_ALERTAS : configures
+          VEHICULO   ||--o{ SEGUROS_ALERTAS : targets
+
+          PROPIETARIO {
+            INT id_propietario PK
+            VARCHAR cedula "UNIQUE"
+            VARCHAR nombre
+            VARCHAR direccion
+            VARCHAR telefono
+            VARCHAR email
+            TIMESTAMP created_at
+          }
+
+          VEHICULO {
+            INT id_vehiculo PK
+            VARCHAR placa "UNIQUE"
+            VARCHAR marca
+            YEAR modelo
+            VARCHAR tipo
+            INT cilindraje
+            ENUM estado_soat "VIGENTE|VENCIDO"
+            DATE vencimiento_soat
+            ENUM estado_tecnomecanica "VIGENTE|VENCIDO"
+            DATE vencimiento_tecnomecanica
+            INT id_propietario FK
+            TIMESTAMP created_at
+          }
+
+          MULTAS {
+            INT id_multa PK
+            DATE fecha
+            VARCHAR tipo_infraccion
+            DECIMAL monto
+            ENUM estado "PAGADA|PENDIENTE|EN_COBRO"
+            INT id_vehiculo FK
+            INT id_propietario FK "nullable"
+            TIMESTAMP created_at
+          }
+
+          HISTORIAL_PROPIETARIOS {
+            INT id_historial PK
+            INT id_vehiculo FK
+            VARCHAR cedula_antiguo_propietario
+            DATE fecha_transferencia
+            TIMESTAMP created_at
+          }
+
+          SEGUROS_ALERTAS {
+            INT id_alerta PK
+            INT id_propietario FK
+            INT id_vehiculo FK
+            ENUM tipo_alerta "SOAT|TECNOMECANICA"
+            INT dias_restantes
+            BOOLEAN notificado
+            TIMESTAMP created_at
+          }
+      </div>
+    </div>
+
+    <div class="card legend">
+      <strong>Notas de diseño</strong>
+      <ol>
+        <li><em>multas.id_propietario</em> es opcional para reflejar casos donde la infracción recae en la persona (no sólo el vehículo).</li>
+        <li><em>historial_propietarios</em> guarda la cédula histórica sin FK dura al propietario (permite conservar trazabilidad aunque el registro actual se elimine).</li>
+        <li>Las alertas referencian tanto a <em>propietario</em> como a <em>vehiculo</em> para consultas eficientes por cualquiera de los dos ejes.</li>
+      </ol>
+    </div>
+
+    <div class="legend" style="text-align:center">Hecho con <a href="https://mermaid.js.org/syntax/entityRelationshipDiagram.html" target="_blank" rel="noreferrer">Mermaid ER</a>.</div>
+  </div>
+</body>
+</html>

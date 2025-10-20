@@ -1,0 +1,75 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_transito
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: transito_db
+      TZ: America/Bogota
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./database/data/mysql:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/0_init.sql:ro
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    restart: unless-stopped
+    networks:
+      - transito_network
+
+  backend:
+    build: ./backend
+    container_name: backend_transito
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=transito_db
+      - DB_USER=root
+      - DB_PASSWORD=root
+    depends_on:
+      - mysql
+    restart: unless-stopped
+    networks:
+      - transito_network
+    volumes:
+      - ./backend:/app  # Para desarrollo con hot reload
+
+  frontend:
+    build: ./vehiculos-dashboard
+    container_name: frontend_transito
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - transito_network
+
+  ngrok:
+    build: ./ngrok
+    container_name: ngrok_transito
+    ports:
+      - "4040:4040"  # Dashboard de ngrok
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN:-}  # Opcional: authtoken de ngrok
+    depends_on:
+      - frontend
+    restart: unless-stopped
+    networks:
+      - transito_network
+
+  adminer:
+    image: adminer:latest
+    container_name: adminer_transito
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    restart: unless-stopped
+    networks:
+      - transito_network
+
+networks:
+  transito_network:
+    driver: bridge

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Frontend-Backend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚗 Test Frontend-Backend</h1>
+        
+        <div class="form-group">
+            <label for="placa">Placa del Vehículo:</label>
+            <input type="text" id="placa" placeholder="Ej: XYZ001" value="XYZ001">
+        </div>
+        
+        <div class="form-group">
+            <label for="cedula">Cédula del Propietario:</label>
+            <input type="text" id="cedula" placeholder="Ej: 1000000001" value="1000000001">
+        </div>
+        
+        <button onclick="consultar()">🔍 Consultar</button>
+        
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        async function consultar() {
+            const placa = document.getElementById('placa').value;
+            const cedula = document.getElementById('cedula').value;
+            const resultado = document.getElementById('resultado');
+            
+            if (!placa || !cedula) {
+                mostrarResultado('Por favor complete ambos campos', 'error');
+                return;
+            }
+            
+            mostrarResultado('Consultando...', 'loading');
+            
+            try {
+                const response = await fetch(`http://localhost:8000/api/consulta/${placa}/${cedula}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    mostrarResultado(JSON.stringify(data, null, 2), 'success');
+                } else {
+                    mostrarResultado(data.message, 'error');
+                }
+            } catch (error) {
+                mostrarResultado(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function mostrarResultado(mensaje, tipo) {
+            const resultado = document.getElementById('resultado');
+            resultado.textContent = mensaje;
+            resultado.className = `result ${tipo}`;
+        }
+        
+        // Permitir consulta con Enter
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                consultar();
+            }
+        });
+    </script>
+</body>
+</html>
