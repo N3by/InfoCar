@@ -86,84 +86,141 @@ CREATE INDEX idx_multa_estado ON multas(estado);
 CREATE INDEX idx_alerta_tipo ON seguros_alertas(tipo_alerta);
 
 -- =========================
--- Datos dummy (100 filas total)
+-- Datos dummy (260 filas total: 70 propietarios + 100 vehículos + 60 multas + 30 historiales)
 -- =========================
 
--- 1) 30 propietarios
-WITH RECURSIVE seq(n) AS (
-  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 30
-)
+-- 1) 70 propietarios con datos realistas colombianos (solo números en cédula)
 INSERT INTO propietario (cedula, nombre, direccion, telefono, email)
+WITH RECURSIVE seq(n) AS (
+  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 70
+)
 SELECT
-  CONCAT('10', LPAD(n, 8, '0')) AS cedula,
-  CONCAT('Propietario ', n) AS nombre,
-  CONCAT('Calle ', n, ' #', n, '-', (n%50)+1, ' Bogotá') AS direccion,
-  CONCAT('+57 300', LPAD(n, 7, '0')) AS telefono,
-  CONCAT('prop', n, '@mail.com') AS email
+  CONCAT('1234567', LPAD(n, 3, '0')) AS cedula,
+  CONCAT(
+    ELT((n%20)+1, 'Carlos Alberto', 'María Elena', 'Luis Fernando', 'Ana María', 'José Manuel', 
+        'Laura Patricia', 'Fernando Andrés', 'Patricia Lucia', 'Miguel Ángel', 'Diana Carolina', 
+        'Ricardo Antonio', 'Sandra Milena', 'Javier Eduardo', 'Carmen Rosa', 'Diego Alejandro',
+        'Andrés Felipe', 'Paola Andrea', 'Juan Carlos', 'María Alejandra', 'David Santiago'),
+    ' ',
+    ELT((n%25)+1, 'García', 'Rodríguez', 'López', 'Martínez', 'González', 'Hernández', 'Pérez', 
+        'Sánchez', 'Ramírez', 'Torres', 'Flores', 'Rivera', 'Cruz', 'Morales', 'Ortiz', 
+        'Gutiérrez', 'Jiménez', 'Mendoza', 'Álvarez', 'Fernández', 'Castro', 'Vargas', 
+        'Moreno', 'Ruiz', 'Díaz')
+  ) AS nombre,
+  CONCAT(
+    ELT((n%4)+1, 'Carrera', 'Calle', 'Avenida', 'Transversal'),
+    ' ',
+    (n*7) % 200,
+    IF(n%3=0, ' #', ''),
+    IF(n%3=0, (n%50)+1, ''),
+    ', Barrio ',
+    ELT((n%15)+1, 'Centro', 'El Poblado', 'La Floresta', 'Los Colina', 'Alameda', 'El Nogal', 
+        'La Candelaria', 'Usaquén', 'Chapinero', 'Kennedy', 'Suba', 'Engativá', 'Fontibón', 
+        'Santa Fe', 'Barrios Unidos'),
+    ', ',
+    ELT((n%10)+1, 'Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga', 
+        'Pereira', 'Manizales', 'Armenia', 'Pasto')
+  ) AS direccion,
+  CONCAT('350608', LPAD(n, 4, '0')) AS telefono,
+  CONCAT(
+    LOWER(ELT((n%20)+1, 'carlos', 'maria', 'luis', 'ana', 'jose', 'laura', 'fernando', 
+        'patricia', 'miguel', 'diana', 'ricardo', 'sandra', 'javier', 'carmen', 'diego', 
+        'andres', 'paola', 'juan', 'david', 'andrea')),
+    '.',
+    LOWER(ELT((n%25)+1, 'garcia', 'rodriguez', 'lopez', 'martinez', 'gonzalez', 'hernandez', 
+        'perez', 'sanchez', 'ramirez', 'torres', 'flores', 'rivera', 'cruz', 'morales', 'ortiz', 
+        'gutierrez', 'jimenez', 'mendoza', 'alvarez', 'fernandez', 'castro', 'vargas', 
+        'moreno', 'ruiz', 'diaz')),
+    IF(n%3=0, '@gmail.com', IF(n%2=0, '@hotmail.com', '@outlook.com'))
+  ) AS email
 FROM seq;
 
--- 2) 35 vehículos (asignados cíclicamente a 30 propietarios)
-WITH RECURSIVE seq(n) AS (
-  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 35
-)
+-- 2) 100 vehículos con placas realistas según tipo de vehículo
 INSERT INTO vehiculo (
   placa, marca, modelo, tipo, cilindraje,
   estado_soat, vencimiento_soat,
   estado_tecnomecanica, vencimiento_tecnomecanica,
   id_propietario
 )
+WITH RECURSIVE seq(n) AS (
+  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 100
+)
 SELECT
-  CONCAT('ABC', LPAD(n,3,'0')) AS placa,
-  ELT((n%6)+1, 'Chevrolet','Renault','Yamaha','Kia','Mazda','Honda') AS marca,
-  2000 + (n%24) AS modelo,
-  ELT((n%3)+1, 'carro','moto','camioneta') AS tipo,
-  CASE WHEN (n%3)=2 THEN 125 ELSE CASE WHEN (n%3)=1 THEN 1600 ELSE 2000 END END AS cilindraje,
-  IF((n%4)=0,'VENCIDO','VIGENTE') AS estado_soat,
-  DATE_ADD(CURDATE(), INTERVAL (CASE WHEN (n%4)=0 THEN -15 ELSE (n%20)+5 END) DAY) AS venc_soat,
-  IF((n%5)=0,'VENCIDO','VIGENTE') AS estado_tecnomecanica,
-  DATE_ADD(CURDATE(), INTERVAL (CASE WHEN (n%5)=0 THEN -30 ELSE (n%40)+10 END) DAY) AS venc_tecno,
-  ((n-1) % 30) + 1 AS id_propietario
+  CASE 
+    WHEN (n%4)=2 THEN -- Motos: formato ABC12A (n%4=2 es la posición de 'moto' en ELT)
+      CONCAT(CHAR(65+(n%26)), CHAR(66+((n*7)%26)), CHAR(67+((n*11)%26)), LPAD(((n%99)+1), 2, '0'), CHAR(65+((n*13)%26)))
+    WHEN (n%4)=0 THEN -- Busetas: formato EQA-123 (n%4=0 es la posición de 'buseta')
+      CONCAT('EQA-', LPAD((n%999)+1, 3, '0'))
+    ELSE -- Carros y Camionetas: formato ABC123
+      CONCAT(CHAR(65+(n%26)), CHAR(66+((n*7)%26)), CHAR(67+((n*11)%26)), LPAD((n%999)+1, 3, '0'))
+  END AS placa,
+  ELT((n%12)+1, 'Chevrolet','Renault','Yamaha','Kia','Mazda','Honda','Toyota','Nissan','Ford','Mitsubishi','Suzuki','Hyundai') AS marca,
+  2000 + (n%25) AS modelo,
+  ELT((n%4)+1, 'carro','moto','camioneta','buseta') AS tipo,
+  CASE 
+    WHEN (n%4)=3 THEN 125  -- moto
+    WHEN (n%4)=2 THEN 2500 -- camioneta
+    WHEN (n%4)=0 THEN 3000 -- buseta
+    ELSE 1600 -- carro
+  END AS cilindraje,
+  IF((n%5)=0,'VENCIDO','VIGENTE') AS estado_soat,
+  DATE_ADD(CURDATE(), INTERVAL (CASE WHEN (n%5)=0 THEN -15 ELSE (n%20)+5 END) DAY) AS vencimiento_soat,
+  IF((n%6)=0,'VENCIDO','VIGENTE') AS estado_tecnomecanica,
+  DATE_ADD(CURDATE(), INTERVAL (CASE WHEN (n%6)=0 THEN -30 ELSE (n%40)+10 END) DAY) AS vencimiento_tecnomecanica,
+  ((n-1) % 70) + 1 AS id_propietario
 FROM seq;
 
--- 3) 20 multas (ligadas a vehículo y, si aplica, al propietario actual del vehículo)
-WITH RECURSIVE seq(n) AS (
-  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 20
-)
+-- 3) 60 multas con infracciones colombianas realistas
 INSERT INTO multas (fecha, tipo_infraccion, monto, estado, id_vehiculo, id_propietario)
+WITH RECURSIVE seq(n) AS (
+  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 60
+)
 SELECT
-  DATE_ADD(CURDATE(), INTERVAL -(n*3) DAY) AS fecha,
-  ELT((n%6)+1, 'Exceso de velocidad','Pico y placa','Mal estacionado','SOAT vencido','Revisión vencida','Conducir sin licencia') AS tipo_infraccion,
-  (CASE (n%6)
+  DATE_ADD(CURDATE(), INTERVAL -(n*2) DAY) AS fecha,
+  ELT((n%8)+1, 
+    'Exceso de velocidad en zona escolar',
+    'Pico y placa',
+    'Estacionar en zona prohibida',
+    'SOAT vencido',
+    'Revisión tecnomecánica vencida',
+    'Conducir sin licencia',
+    'No respetar semáforo en rojo',
+    'Circular sin placas'
+  ) AS tipo_infraccion,
+  (CASE (n%8)
      WHEN 0 THEN 522000
      WHEN 1 THEN 130000
      WHEN 2 THEN 327000
      WHEN 3 THEN 1040000
      WHEN 4 THEN 780000
-     ELSE 989000 END) * 1.00 AS monto,
+     WHEN 5 THEN 989000
+     WHEN 6 THEN 1045000
+     ELSE 890000
+   END) * 1.00 AS monto,
   ELT((n%3)+1, 'PENDIENTE','PAGADA','EN_COBRO') AS estado,
-  ((n-1) % 35) + 1 AS id_vehiculo,
-  (SELECT v.id_propietario FROM vehiculo v WHERE v.id_vehiculo = ((n-1)%35)+1) AS id_propietario
+  ((n-1) % 100) + 1 AS id_vehiculo,
+  (SELECT v.id_propietario FROM vehiculo v WHERE v.id_vehiculo = ((n-1)%100)+1) AS id_propietario
 FROM seq;
 
--- 4) 5 historiales de propietarios (simulando transferencias previas)
-WITH RECURSIVE seq(n) AS (
-  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 5
-)
+-- 4) 30 historiales de propietarios con cédulas antiguas (solo números)
 INSERT INTO historial_propietarios (id_vehiculo, cedula_antiguo_propietario, fecha_transferencia)
+WITH RECURSIVE seq(n) AS (
+  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 30
+)
 SELECT
   n AS id_vehiculo,
-  CONCAT('10', LPAD(5000 + n, 8, '0')) AS cedula_antiguo,
-  DATE_ADD(CURDATE(), INTERVAL -(200 + n*15) DAY) AS fecha_tr
+  CONCAT('9876543', LPAD(n*7, 3, '0')) AS cedula_antiguo_propietario,
+  DATE_SUB(CURDATE(), INTERVAL (200 + n*45) DAY) AS fecha_transferencia
 FROM seq;
 
--- 5) 10 alertas (SOAT/TECNOMECANICA) sobre distintos vehículos/propietarios
-WITH RECURSIVE seq(n) AS (
-  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 10
-)
+-- 5) 15 alertas (SOAT/TECNOMECANICA) sobre distintos vehículos/propietarios
 INSERT INTO seguros_alertas (id_propietario, id_vehiculo, tipo_alerta, dias_restantes, notificado)
+WITH RECURSIVE seq(n) AS (
+  SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n < 15
+)
 SELECT
-  ((n-1)%30)+1 AS id_propietario,
-  ((n-1)%35)+1 AS id_vehiculo,
+  ((n-1)%70)+1 AS id_propietario,
+  ((n-1)%100)+1 AS id_vehiculo,
   ELT((n%2)+1, 'SOAT','TECNOMECANICA') AS tipo_alerta,
   CASE WHEN (n%4)=0 THEN 0 ELSE (n*3) END AS dias_restantes,
   (n%3)=0 AS notificado
@@ -177,6 +234,8 @@ UNION ALL SELECT 'vehiculo', COUNT(*) FROM vehiculo
 UNION ALL SELECT 'multas', COUNT(*) FROM multas
 UNION ALL SELECT 'historial_propietarios', COUNT(*) FROM historial_propietarios
 UNION ALL SELECT 'seguros_alertas', COUNT(*) FROM seguros_alertas;
+
+-- Total esperado: 275 registros (70+100+60+30+15)
 
 -- Consultas de ejemplo
 -- 1) Consulta por placa + cédula

@@ -66,12 +66,23 @@ cd testing-project
 
 ## 🧪 **Datos de Prueba**
 
-| Placa | Cédula | Descripción |
+
+ Placa | Cédula | Descripción |
 |-------|--------|-------------|
-| `XYZ001` | `1000000001` | Vehículo con multa pagada |
-| `XYZ002` | `1000000002` | Vehículo con multa pendiente |
-| `XYZ003` | `1000000003` | Vehículo con documentos vencidos |
-| `XYZ004` | `1000000004` | Vehículo sin problemas |
+| `BIN002` | `1234567001` | Vehículo con multa pagada - María Elena Rodríguez |
+| `CPY03A` | `1234567002` | Vehículo con multa pendiente - Luis Fernando López |
+| `DWJ004` | `1234567003` | Vehículo con documentos vencidos - Ana María Martínez |
+| `FKF006` | `1234567005` | Vehículo sin problemas - José Manuel González |
+
+
+### **Credenciales de Adminer** (http://localhost:8080)
+- **Sistema**: MySQL
+- **Servidor**: `mysql`
+- **Usuario**: `root`
+- **Contraseña**: `root`
+- **Base de datos**: `transito_db`
+
+
 
 ## 🔧 **Comandos Útiles**
 
